@@ -295,6 +295,148 @@ async def fiken_transactions_list_tool(
     )
 
 
+# ── Skriveoperasjonar (Fase 3, krev confirm=True) ───────────────────────────
+@mcp.tool()
+async def fiken_contact_create_tool(
+    name: str,
+    email: str | None = None,
+    organization_number: str | None = None,
+    phone_number: str | None = None,
+    address: dict | None = None,
+    customer: bool | None = None,
+    supplier: bool | None = None,
+    language: str | None = None,
+    currency: str | None = None,
+    notes: list[str] | None = None,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Opprett ny kontakt. Default confirm=False returnerer berre samandrag; set confirm=True for å faktisk opprette."""
+    return await _contacts.fiken_contact_create(
+        _get_client(),
+        name=name,
+        email=email,
+        organization_number=organization_number,
+        phone_number=phone_number,
+        address=address,
+        customer=customer,
+        supplier=supplier,
+        language=language,
+        currency=currency,
+        notes=notes,
+        slug=slug,
+        confirm=confirm,
+    )
+
+
+@mcp.tool()
+async def fiken_contact_update_tool(
+    contact_id: int,
+    name: str | None = None,
+    email: str | None = None,
+    organization_number: str | None = None,
+    phone_number: str | None = None,
+    address: dict | None = None,
+    customer: bool | None = None,
+    supplier: bool | None = None,
+    language: str | None = None,
+    currency: str | None = None,
+    inactive: bool | None = None,
+    notes: list[str] | None = None,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Oppdater kontakt. Set berre felta du vil endre. confirm=False gir dry-run."""
+    return await _contacts.fiken_contact_update(
+        _get_client(),
+        contact_id=contact_id,
+        name=name,
+        email=email,
+        organization_number=organization_number,
+        phone_number=phone_number,
+        address=address,
+        customer=customer,
+        supplier=supplier,
+        language=language,
+        currency=currency,
+        inactive=inactive,
+        notes=notes,
+        slug=slug,
+        confirm=confirm,
+    )
+
+
+@mcp.tool()
+async def fiken_invoice_create_tool(
+    customer_id: int,
+    issue_date: str,
+    due_date: str,
+    lines: list[dict],
+    bank_account_code: str,
+    invoice_text: str | None = None,
+    your_reference: str | None = None,
+    cash: bool = False,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Opprett ny faktura. Datoar i yyyy-MM-dd, beløp i øre. confirm=False gir dry-run."""
+    return await _invoices.fiken_invoice_create(
+        _get_client(),
+        customer_id=customer_id,
+        issue_date=issue_date,
+        due_date=due_date,
+        lines=lines,
+        bank_account_code=bank_account_code,
+        invoice_text=invoice_text,
+        your_reference=your_reference,
+        cash=cash,
+        slug=slug,
+        confirm=confirm,
+    )
+
+
+@mcp.tool()
+async def fiken_invoice_send_tool(
+    invoice_id: int,
+    method: str = "email",
+    email_address: str | None = None,
+    message: str | None = None,
+    include_kid: bool = True,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Send faktura via email/letter/sms/auto. confirm=False gir dry-run."""
+    return await _invoices.fiken_invoice_send(
+        _get_client(),
+        invoice_id=invoice_id,
+        method=method,
+        email_address=email_address,
+        message=message,
+        include_kid=include_kid,
+        slug=slug,
+        confirm=confirm,
+    )
+
+
+@mcp.tool()
+async def fiken_journal_entry_create_tool(
+    date: str,
+    description: str,
+    lines: list[dict],
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Opprett manuelt bilag. Linjer = liste av {amount, account}; sum amount må vere 0. Beløp i øre. confirm=False gir dry-run."""
+    return await _journal.fiken_journal_entry_create(
+        _get_client(),
+        date=date,
+        description=description,
+        lines=lines,
+        slug=slug,
+        confirm=confirm,
+    )
+
+
 def main() -> None:
     mcp.run()
 

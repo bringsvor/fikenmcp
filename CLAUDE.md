@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Spec §11 Fase 1 and Fase 2 (read-only) are implemented: 19 MCP tools. Fase 3 (writes with `confirm=True`) is not yet started. Purchases are included even though they are outside the original spec. The spec (`fiken-mcp-spec.md`, Norwegian/nynorsk) remains the source of truth for intent — but several deviations are baked in from live probing.
+Spec §11 Fase 1, Fase 2 (read-only), and Fase 3 (writes) are implemented: 24 MCP tools. Every write tool (`*_create`, `*_update`, `*_send`) defaults to `confirm=False` and returns a structured dry-run summary; the API call only happens on `confirm=True` (spec §6). Purchases are included even though they are outside the original spec. The spec (`fiken-mcp-spec.md`, Norwegian/nynorsk) remains the source of truth for intent — but several deviations are baked in from live probing.
 
 ## Fiken API v2 gotchas (from empirical testing)
 

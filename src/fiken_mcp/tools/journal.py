@@ -81,6 +81,61 @@ async def fiken_journal_entry_get(
     )
 
 
+async def fiken_journal_entry_create(
+    client: FikenClient,
+    *,
+    date: str,
+    description: str,
+    lines: list[dict[str, Any]],
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict[str, Any]:
+    """Opprett manuelt bilag. Krev confirm=True.
+
+    `lines` er liste av {amount, account}. Sum av amount MÅ vere 0 (balansert bilag).
+    Beløp i øre; positivt = debet, negativt = kredit.
+    """
+    resolved = await _slug(client, slug)
+    if isinstance(resolved, dict):
+        return resolved
+
+    total = sum(int(ln.get("amount", 0)) for ln in lines)
+    if total != 0:
+        return {
+            "error": True,
+            "status_code": 400,
+            "message": f"Bilaget er ikkje balansert — sum av amount = {total} øre (må vere 0)",
+            "fiken_error": None,
+        }
+    if len(lines) < 2:
+        return {
+            "error": True,
+            "status_code": 400,
+            "message": "Eit bilag krev minst to linjer",
+            "fiken_error": None,
+        }
+
+    payload = {"date": date, "description": description, "lines": lines}
+
+    if not confirm:
+        debit_sum = sum(int(ln["amount"]) for ln in lines if int(ln.get("amount", 0)) > 0)
+        accounts = sorted({str(ln.get("account")) for ln in lines})
+        return {
+            "dry_run": True,
+            "operation": "POST /journalEntries",
+            "summary": (
+                f"Vil opprette bilag: {date}  '{description}'  "
+                f"{len(lines)} linjer, {debit_sum} øre ({debit_sum / 100:.2f} NOK) over {accounts}"
+            ),
+            "payload": payload,
+            "note": "Kall på nytt med confirm=True for å utføre.",
+        }
+
+    return await client.request(
+        "POST", f"/companies/{resolved}/journalEntries", json=payload
+    )
+
+
 async def fiken_transactions_list(
     client: FikenClient,
     *,
