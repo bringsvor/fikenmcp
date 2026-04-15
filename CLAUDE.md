@@ -4,10 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Spec §11 Fase 1 (read-only) is implemented: 11 MCP tools covering company, invoices, contacts, accounts, account balances, balance sheet, and income statement. Fase 2 (journal/bank/transactions) and Fase 3 (writes with `confirm=True`) are not yet implemented. The spec (`fiken-mcp-spec.md`, Norwegian/nynorsk) remains the source of truth for intent — but two deviations are already baked in from live probing:
+Spec §11 Fase 1 and Fase 2 (read-only) are implemented: 19 MCP tools. Fase 3 (writes with `confirm=True`) is not yet started. Purchases are included even though they are outside the original spec. The spec (`fiken-mcp-spec.md`, Norwegian/nynorsk) remains the source of truth for intent — but several deviations are baked in from live probing.
+
+## Fiken API v2 gotchas (from empirical testing)
 
 - **Pagination metadata lives in HTTP headers** (`Fiken-Api-Page`, `Fiken-Api-Page-Size`, `Fiken-Api-Result-Count`, `Fiken-Api-Page-Count`), not the body. `page` is 0-indexed. See `FikenClient.request_paginated()`.
-- **`/balanceSheet/` and `/incomeStatements/` do not exist as API endpoints.** `fiken_balance_sheet` and `fiken_income_statement` are computed client-side from `/accountBalances` by aggregating account codes (1xxx/2xxx for balance; 3xxx-8xxx for income statement). Fiken does not auto-close P&L accounts annually, so a year-end `balance_check` equals cumulative unallocated result — this is expected.
+- **`/balanceSheet/` and `/incomeStatements/` do not exist.** `fiken_balance_sheet` and `fiken_income_statement` are computed client-side from `/accountBalances` by aggregating account codes (1xxx/2xxx for balance; 3xxx-8xxx for income statement). Fiken does not auto-close P&L accounts annually, so a year-end `balance_check` equals cumulative unallocated result — this is expected.
+- **`/bankAccounts/{id}/bankAccountStatements` does not exist**, and there is no endpoint for the raw bank-feed / superavstemming queue. Only booked data is accessible. `fiken_bank_transactions` is a client-side aggregation over `/journalEntries` filtered by the bank account's `accountCode`.
+- **Server-side filters are sparse.** `/purchases` honors `paid=true|false` only. `/transactions` and `/journalEntries` ignore `dateFrom`, `startDate`, `fromDate`, and `account` — date/account filtering must happen client-side after `fetch_all=True`.
+- **Amounts are in øre** (integer hundredths of NOK) throughout the API and all tool responses.
 
 ## Planned stack
 
