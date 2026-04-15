@@ -4,7 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-This repository currently contains only `fiken-mcp-spec.md` — a design spec (in Norwegian/nynorsk) for a Python MCP server that wraps Fiken's REST API v2. No implementation exists yet. The spec is the source of truth; read it before writing code.
+Spec §11 Fase 1 (read-only) is implemented: 11 MCP tools covering company, invoices, contacts, accounts, account balances, balance sheet, and income statement. Fase 2 (journal/bank/transactions) and Fase 3 (writes with `confirm=True`) are not yet implemented. The spec (`fiken-mcp-spec.md`, Norwegian/nynorsk) remains the source of truth for intent — but two deviations are already baked in from live probing:
+
+- **Pagination metadata lives in HTTP headers** (`Fiken-Api-Page`, `Fiken-Api-Page-Size`, `Fiken-Api-Result-Count`, `Fiken-Api-Page-Count`), not the body. `page` is 0-indexed. See `FikenClient.request_paginated()`.
+- **`/balanceSheet/` and `/incomeStatements/` do not exist as API endpoints.** `fiken_balance_sheet` and `fiken_income_statement` are computed client-side from `/accountBalances` by aggregating account codes (1xxx/2xxx for balance; 3xxx-8xxx for income statement). Fiken does not auto-close P&L accounts annually, so a year-end `balance_check` equals cumulative unallocated result — this is expected.
 
 ## Planned stack
 

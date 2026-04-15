@@ -1,6 +1,19 @@
 from typing import Any
 
-from ..client import FikenClient
+from ..client import FikenClient, DEFAULT_PAGE_SIZE
+
+
+async def fiken_companies_list(
+    client: FikenClient,
+    *,
+    page: int = 0,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    fetch_all: bool = False,
+) -> dict[str, Any]:
+    """List alle selskap brukaren har tilgang til."""
+    return await client.request_paginated(
+        "/companies/", page=page, page_size=page_size, fetch_all=fetch_all
+    )
 
 
 async def fiken_company_get(client: FikenClient, slug: str | None = None) -> dict[str, Any]:
