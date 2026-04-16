@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Spec §11 Fase 1, Fase 2 (read-only), and Fase 3 (writes) are implemented: 24 MCP tools. Every write tool (`*_create`, `*_update`, `*_send`) defaults to `confirm=False` and returns a structured dry-run summary; the API call only happens on `confirm=True` (spec §6). Purchases are included even though they are outside the original spec. The spec (`fiken-mcp-spec.md`, Norwegian/nynorsk) remains the source of truth for intent — but several deviations are baked in from live probing.
+Spec §11 Fase 1, Fase 2 (read-only), and Fase 3 (writes) are implemented, plus extensions: **33 MCP tools** with **85 tests**. Every write tool (`*_create`, `*_update`, `*_send`, `*_attachment_add`) defaults to `confirm=False` and returns a structured dry-run summary; the API call only happens on `confirm=True` (spec §6). Extensions beyond original spec: purchases, products (CRUD), inbox, attachments (invoice + journal entry, multipart/base64). The spec (`fiken-mcp-spec.md`, Norwegian/nynorsk) remains the source of truth for intent — but several deviations are baked in from live probing.
 
 ## Fiken API v2 gotchas (from empirical testing)
 
@@ -14,6 +14,9 @@ Spec §11 Fase 1, Fase 2 (read-only), and Fase 3 (writes) are implemented: 24 MC
 - **Server-side filters are sparse.** `/purchases` honors `paid=true|false` only. `/transactions` and `/journalEntries` ignore `dateFrom`, `startDate`, `fromDate`, and `account` — date/account filtering must happen client-side after `fetch_all=True`.
 - **Amounts are in øre** (integer hundredths of NOK) throughout the API and all tool responses.
 - **Contact updates use PUT, not PATCH.** The API returns 405 on PATCH. `fiken_contact_update` does read-modify-write: GET current → merge changes → PUT full object. Read-only fields (`contactId`, `createdDate`, `lastModifiedDate`, `contactPerson`, `customerAccountCode`, `supplierAccountCode`) are stripped before PUT.
+- **Product updates also use PUT.** Same read-modify-write pattern. Read-only fields stripped: `productId`, `createdDate`, `lastModifiedDate`.
+- **Inbox is read-only.** Only `GET /inbox` exists in the API — no create, no individual get, no upload. Fiken's OCR/invoice parsing is GUI-only.
+- **No purchase attachments** in the API. Attachments are only available on invoices (outgoing), journal entries, credit note drafts, sales, offers, and order confirmations.
 
 ## Planned stack
 
@@ -23,7 +26,7 @@ Spec §11 Fase 1, Fase 2 (read-only), and Fase 3 (writes) are implemented: 24 MC
 
 ## Architecture (per spec §4, §7)
 
-Target layout: `src/fiken_mcp/{server,client,config}.py` + `tools/{company,invoices,contacts,accounts,journal,bank,products,reports}.py`.
+Layout: `src/fiken_mcp/{server,client,config}.py` + `tools/{company,invoices,contacts,accounts,journal,bank,products,reports,inbox,attachments}.py`.
 
 Critical design constraints:
 
@@ -32,10 +35,12 @@ Critical design constraints:
 - **Bearer auth** via `FIKEN_API_TOKEN` env var. Base URL `https://api.fiken.no/api/v2`.
 - **Retry policy**: 429 → exponential backoff, max 3 attempts. 401/400/404 → return structured error objects (not raised exceptions) as the MCP tool result.
 - **Pagination**: list tools accept `page`/`pageSize` (default 25, max 100) and optional `fetch_all=True`; responses include `{data, total, page, pageSize}`.
+- **HTTP logging**: All requests logged at DEBUG level, errors at WARNING (`fiken_mcp.client`).
+- **Multipart upload**: `client.request()` supports `files` and `data` params for attachment uploads. Attachment tools accept base64-encoded content.
 
 ## Write-operation safety (spec §6)
 
-Every tool that mutates data (POST/PATCH/DELETE) **must** take `confirm: bool = False`. When `confirm=False`, return a human-readable summary of what *would* happen and do nothing. Only execute the API call when `confirm=True`. This is non-negotiable — the spec's whole write story depends on it.
+Every tool that mutates data (POST/PUT) **must** take `confirm: bool = False`. When `confirm=False`, return a human-readable summary of what *would* happen and do nothing. Only execute the API call when `confirm=True`. This is non-negotiable — the spec's whole write story depends on it.
 
 ## Tool naming
 
