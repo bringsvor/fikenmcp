@@ -13,6 +13,7 @@ Spec §11 Fase 1, Fase 2 (read-only), and Fase 3 (writes) are implemented: 24 MC
 - **`/bankAccounts/{id}/bankAccountStatements` does not exist**, and there is no endpoint for the raw bank-feed / superavstemming queue. Only booked data is accessible. `fiken_bank_transactions` is a client-side aggregation over `/journalEntries` filtered by the bank account's `accountCode`.
 - **Server-side filters are sparse.** `/purchases` honors `paid=true|false` only. `/transactions` and `/journalEntries` ignore `dateFrom`, `startDate`, `fromDate`, and `account` — date/account filtering must happen client-side after `fetch_all=True`.
 - **Amounts are in øre** (integer hundredths of NOK) throughout the API and all tool responses.
+- **Contact updates use PUT, not PATCH.** The API returns 405 on PATCH. `fiken_contact_update` does read-modify-write: GET current → merge changes → PUT full object. Read-only fields (`contactId`, `createdDate`, `lastModifiedDate`, `contactPerson`, `customerAccountCode`, `supplierAccountCode`) are stripped before PUT.
 
 ## Planned stack
 

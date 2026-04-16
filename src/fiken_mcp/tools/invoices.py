@@ -95,7 +95,12 @@ async def fiken_invoice_create(
     if your_reference is not None:
         payload["yourReference"] = your_reference
 
-    gross_total = sum(int(ln.get("netPrice", 0)) + int(ln.get("vat", 0)) for ln in lines)
+    def _line_gross(ln: dict[str, Any]) -> int:
+        if "netPrice" in ln or "vat" in ln:
+            return int(ln.get("netPrice", 0)) + int(ln.get("vat", 0))
+        return int(ln.get("unitPrice", 0)) * int(ln.get("quantity", 1))
+
+    gross_total = sum(_line_gross(ln) for ln in lines)
 
     if not confirm:
         return {

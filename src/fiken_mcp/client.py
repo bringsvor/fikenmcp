@@ -1,7 +1,10 @@
 import asyncio
+import logging
 from typing import Any
 
 import httpx
+
+logger = logging.getLogger("fiken_mcp.client")
 
 from .config import Settings
 
@@ -101,7 +104,10 @@ class FikenClient:
         try:
             response = await self._http.request(method, path, params=params, json=json)
         except httpx.HTTPError as exc:
+            logger.warning("%s %s feil: %s", method, path, exc)
             return _error(0, f"HTTP-feil: {exc}", None), httpx.Headers()
+
+        logger.debug("%s %s → %d", method, path, response.status_code)
 
         if response.status_code == 429 and attempt < 3:
             await asyncio.sleep(2**attempt)
@@ -110,6 +116,7 @@ class FikenClient:
             )
 
         if response.status_code >= 400:
+            logger.warning("%s %s → %d", method, path, response.status_code)
             return (
                 _error(
                     response.status_code,

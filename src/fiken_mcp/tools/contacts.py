@@ -191,15 +191,30 @@ async def fiken_contact_update(
             "fiken_error": None,
         }
 
+    # Read-modify-write: Fiken krev PUT med fullt objekt, ikkje PATCH
+    current = await client.request(
+        "GET", f"/companies/{resolved}/contacts/{contact_id}"
+    )
+    if isinstance(current, dict) and current.get("error"):
+        return current
+
+    full_payload = dict(current)
+    full_payload.update(payload)
+    for key in (
+        "contactId", "createdDate", "lastModifiedDate", "contactPerson",
+        "customerAccountCode", "supplierAccountCode",
+    ):
+        full_payload.pop(key, None)
+
     if not confirm:
         return {
             "dry_run": True,
-            "operation": f"PATCH /contacts/{contact_id}",
+            "operation": f"PUT /contacts/{contact_id}",
             "summary": f"Vil oppdatere kontakt {contact_id}: {', '.join(payload.keys())}",
             "payload": payload,
             "note": "Kall på nytt med confirm=True for å utføre.",
         }
 
     return await client.request(
-        "PATCH", f"/companies/{resolved}/contacts/{contact_id}", json=payload
+        "PUT", f"/companies/{resolved}/contacts/{contact_id}", json=full_payload
     )
