@@ -2,9 +2,11 @@ from mcp.server.fastmcp import FastMCP
 
 from .client import FikenClient, DEFAULT_PAGE_SIZE
 from .tools import accounts as _accounts
+from .tools import attachments as _attachments
 from .tools import bank as _bank
 from .tools import contacts as _contacts
 from .tools import company as _company
+from .tools import inbox as _inbox
 from .tools import invoices as _invoices
 from .tools import journal as _journal
 from .tools import products as _products
@@ -326,6 +328,89 @@ async def fiken_bank_transactions_tool(
         date_from=date_from,
         date_to=date_to,
         slug=slug,
+    )
+
+
+# ── Innboks ─────────────────────────────────────────────────────────────────
+@mcp.tool()
+async def fiken_inbox_list_tool(
+    slug: str | None = None,
+    status: str | None = None,
+    name: str | None = None,
+    sort_by: str | None = None,
+    page: int = 0,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    fetch_all: bool = False,
+) -> dict:
+    """List dokument i innboksen. sortBy: 'createdDate asc/desc', 'name asc/desc'."""
+    return await _inbox.fiken_inbox_list(
+        _get_client(),
+        slug=slug,
+        status=status,
+        name=name,
+        sort_by=sort_by,
+        page=page,
+        page_size=page_size,
+        fetch_all=fetch_all,
+    )
+
+
+# ── Vedlegg ─────────────────────────────────────────────────────────────────
+@mcp.tool()
+async def fiken_invoice_attachments_list_tool(
+    invoice_id: int, slug: str | None = None
+) -> dict:
+    """List vedlegg på ein faktura."""
+    return await _attachments.fiken_invoice_attachments_list(
+        _get_client(), invoice_id=invoice_id, slug=slug
+    )
+
+
+@mcp.tool()
+async def fiken_invoice_attachment_add_tool(
+    invoice_id: int,
+    filename: str,
+    content_base64: str,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Last opp vedlegg til ein faktura. Filinnhald som base64-streng. confirm=False gir dry-run."""
+    return await _attachments.fiken_invoice_attachment_add(
+        _get_client(),
+        invoice_id=invoice_id,
+        filename=filename,
+        content_base64=content_base64,
+        slug=slug,
+        confirm=confirm,
+    )
+
+
+@mcp.tool()
+async def fiken_journal_entry_attachments_list_tool(
+    journal_entry_id: int, slug: str | None = None
+) -> dict:
+    """List vedlegg på eit bilag."""
+    return await _attachments.fiken_journal_entry_attachments_list(
+        _get_client(), journal_entry_id=journal_entry_id, slug=slug
+    )
+
+
+@mcp.tool()
+async def fiken_journal_entry_attachment_add_tool(
+    journal_entry_id: int,
+    filename: str,
+    content_base64: str,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Last opp vedlegg til eit bilag. Filinnhald som base64-streng. confirm=False gir dry-run."""
+    return await _attachments.fiken_journal_entry_attachment_add(
+        _get_client(),
+        journal_entry_id=journal_entry_id,
+        filename=filename,
+        content_base64=content_base64,
+        slug=slug,
+        confirm=confirm,
     )
 
 

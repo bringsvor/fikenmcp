@@ -36,9 +36,13 @@ class FikenClient:
         *,
         params: dict[str, Any] | None = None,
         json: Any | None = None,
+        files: Any | None = None,
+        data: dict[str, Any] | None = None,
     ) -> dict[str, Any] | list[Any]:
         async with self._semaphore:
-            body, _headers = await self._request_with_retry(method, path, params=params, json=json)
+            body, _headers = await self._request_with_retry(
+                method, path, params=params, json=json, files=files, data=data
+            )
             return body
 
     async def request_paginated(
@@ -99,10 +103,14 @@ class FikenClient:
         *,
         params: dict[str, Any] | None,
         json: Any | None,
+        files: Any | None = None,
+        data: dict[str, Any] | None = None,
         attempt: int = 0,
     ) -> tuple[dict[str, Any] | list[Any], httpx.Headers]:
         try:
-            response = await self._http.request(method, path, params=params, json=json)
+            response = await self._http.request(
+                method, path, params=params, json=json, files=files, data=data
+            )
         except httpx.HTTPError as exc:
             logger.warning("%s %s feil: %s", method, path, exc)
             return _error(0, f"HTTP-feil: {exc}", None), httpx.Headers()
@@ -112,7 +120,8 @@ class FikenClient:
         if response.status_code == 429 and attempt < 3:
             await asyncio.sleep(2**attempt)
             return await self._request_with_retry(
-                method, path, params=params, json=json, attempt=attempt + 1
+                method, path, params=params, json=json, files=files, data=data,
+                attempt=attempt + 1,
             )
 
         if response.status_code >= 400:
