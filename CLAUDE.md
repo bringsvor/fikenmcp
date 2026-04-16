@@ -46,6 +46,6 @@ Every tool that mutates data (POST/PUT) **must** take `confirm: bool = False`. W
 
 `fiken_{resource}_{operation}` (e.g. `fiken_invoices_list`, `fiken_invoice_create`). See spec §5 for the full inventory and implementation phases (§11: read-only first, writes last).
 
-## Domain notes (Bringsvor-specific)
+## Domain notes
 
-The spec calls out accounts like `2270` (marginlån), `2020` (aksjekapital/overkurs), `1920` (bank), and fritaksmetoden postings (8050/8060) as primary use cases. Balance-sheet and income-statement reports are the backbone for "kva er eigenkapitalen no?"-style questions.
+Standard norsk kontoplan: `1920` (bank), `2020` (aksjekapital), `2270` (langsiktig gjeld), `8050/8060` (finansinntekter/-kostnader). Balance-sheet and income-statement reports are the backbone for "kva er eigenkapitalen no?"-style questions.

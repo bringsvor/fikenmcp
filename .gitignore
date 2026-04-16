@@ -1,4 +1,5 @@
 .env
+fiken-mcp-spec.md
 .venv/
 __pycache__/
 *.pyc

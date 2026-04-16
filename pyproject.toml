@@ -1,7 +1,7 @@
 [project]
 name = "fiken-mcp"
 version = "0.1.0"
-description = "MCP server for Fiken REST API v2 — Bringsvor Consulting AS"
+description = "MCP server for Fiken REST API v2"
 requires-python = ">=3.11"
 dependencies = [
     "mcp>=1.2.0",
