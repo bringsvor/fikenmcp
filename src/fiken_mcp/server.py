@@ -6,6 +6,7 @@ from .tools import attachments as _attachments
 from .tools import bank as _bank
 from .tools import contacts as _contacts
 from .tools import company as _company
+from .tools import credit_notes as _credit_notes
 from .tools import inbox as _inbox
 from .tools import invoices as _invoices
 from .tools import journal as _journal
@@ -75,6 +76,111 @@ async def fiken_invoices_list_tool(
 async def fiken_invoice_get_tool(invoice_id: int, slug: str | None = None) -> dict:
     """Hent enkelt faktura med alle linjer."""
     return await _invoices.fiken_invoice_get(_get_client(), invoice_id=invoice_id, slug=slug)
+
+
+# ── Kreditnota ──────────────────────────────────────────────────────────────
+@mcp.tool()
+async def fiken_credit_notes_list_tool(
+    slug: str | None = None,
+    issue_date_from: str | None = None,
+    issue_date_to: str | None = None,
+    customer_id: int | None = None,
+    settled: bool | None = None,
+    page: int = 0,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    fetch_all: bool = False,
+) -> dict:
+    """List kreditnotaer. Filter: issueDate, customerId, settled."""
+    return await _credit_notes.fiken_credit_notes_list(
+        _get_client(),
+        slug=slug,
+        issue_date_from=issue_date_from,
+        issue_date_to=issue_date_to,
+        customer_id=customer_id,
+        settled=settled,
+        page=page,
+        page_size=page_size,
+        fetch_all=fetch_all,
+    )
+
+
+@mcp.tool()
+async def fiken_credit_note_get_tool(
+    credit_note_id: int, slug: str | None = None
+) -> dict:
+    """Hent enkelt kreditnota."""
+    return await _credit_notes.fiken_credit_note_get(
+        _get_client(), credit_note_id=credit_note_id, slug=slug
+    )
+
+
+@mcp.tool()
+async def fiken_credit_note_create_full_tool(
+    invoice_id: int,
+    issue_date: str,
+    credit_note_text: str | None = None,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Full kreditering av ein faktura. confirm=False gir dry-run."""
+    return await _credit_notes.fiken_credit_note_create_full(
+        _get_client(),
+        invoice_id=invoice_id,
+        issue_date=issue_date,
+        credit_note_text=credit_note_text,
+        slug=slug,
+        confirm=confirm,
+    )
+
+
+@mcp.tool()
+async def fiken_credit_note_create_partial_tool(
+    issue_date: str,
+    lines: list[dict],
+    invoice_id: int | None = None,
+    contact_id: int | None = None,
+    credit_note_text: str | None = None,
+    our_reference: str | None = None,
+    your_reference: str | None = None,
+    currency: str | None = None,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Delvis kreditering. Linjer: {unitPrice, quantity, vatType?, description?}. Beløp i øre. confirm=False gir dry-run."""
+    return await _credit_notes.fiken_credit_note_create_partial(
+        _get_client(),
+        issue_date=issue_date,
+        lines=lines,
+        invoice_id=invoice_id,
+        contact_id=contact_id,
+        credit_note_text=credit_note_text,
+        our_reference=our_reference,
+        your_reference=your_reference,
+        currency=currency,
+        slug=slug,
+        confirm=confirm,
+    )
+
+
+@mcp.tool()
+async def fiken_credit_note_send_tool(
+    credit_note_id: int,
+    method: str = "email",
+    email_address: str | None = None,
+    message: str | None = None,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Send kreditnota via email/letter/auto. confirm=False gir dry-run."""
+    return await _credit_notes.fiken_credit_note_send(
+        _get_client(),
+        credit_note_id=credit_note_id,
+        method=method,
+        email_address=email_address,
+        message=message,
+        slug=slug,
+        confirm=confirm,
+    )
 
 
 # ── Kontaktar ────────────────────────────────────────────────────────────────
