@@ -7,6 +7,7 @@ from .tools import contacts as _contacts
 from .tools import company as _company
 from .tools import invoices as _invoices
 from .tools import journal as _journal
+from .tools import products as _products
 from .tools import purchases as _purchases
 from .tools import reports as _reports
 
@@ -156,6 +157,96 @@ async def fiken_income_statement_tool(
     """Resultat for periode [date_from, date_to] (yyyy-MM-dd). Beløp i øre. Positivt net_result = overskot."""
     return await _reports.fiken_income_statement(
         _get_client(), date_from=date_from, date_to=date_to, slug=slug
+    )
+
+
+# ── Produkt ─────────────────────────────────────────────────────────────────
+@mcp.tool()
+async def fiken_products_list_tool(
+    slug: str | None = None,
+    name: str | None = None,
+    product_number: str | None = None,
+    active: bool | None = None,
+    page: int = 0,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    fetch_all: bool = False,
+) -> dict:
+    """List produkt/tenester. Filtrer på name, productNumber, active."""
+    return await _products.fiken_products_list(
+        _get_client(),
+        slug=slug,
+        name=name,
+        product_number=product_number,
+        active=active,
+        page=page,
+        page_size=page_size,
+        fetch_all=fetch_all,
+    )
+
+
+@mcp.tool()
+async def fiken_product_get_tool(product_id: int, slug: str | None = None) -> dict:
+    """Hent enkelt produkt."""
+    return await _products.fiken_product_get(_get_client(), product_id=product_id, slug=slug)
+
+
+@mcp.tool()
+async def fiken_product_create_tool(
+    name: str,
+    unit_price: int | None = None,
+    vat_type: str | None = None,
+    income_account: str | None = None,
+    product_number: str | None = None,
+    active: bool | None = None,
+    stock: bool | None = None,
+    note: str | None = None,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Opprett nytt produkt. Beløp i øre. confirm=False gir dry-run."""
+    return await _products.fiken_product_create(
+        _get_client(),
+        name=name,
+        unit_price=unit_price,
+        vat_type=vat_type,
+        income_account=income_account,
+        product_number=product_number,
+        active=active,
+        stock=stock,
+        note=note,
+        slug=slug,
+        confirm=confirm,
+    )
+
+
+@mcp.tool()
+async def fiken_product_update_tool(
+    product_id: int,
+    name: str | None = None,
+    unit_price: int | None = None,
+    vat_type: str | None = None,
+    income_account: str | None = None,
+    product_number: str | None = None,
+    active: bool | None = None,
+    stock: bool | None = None,
+    note: str | None = None,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Oppdater produkt. Set berre felta du vil endre. confirm=False gir dry-run."""
+    return await _products.fiken_product_update(
+        _get_client(),
+        product_id=product_id,
+        name=name,
+        unit_price=unit_price,
+        vat_type=vat_type,
+        income_account=income_account,
+        product_number=product_number,
+        active=active,
+        stock=stock,
+        note=note,
+        slug=slug,
+        confirm=confirm,
     )
 
 
