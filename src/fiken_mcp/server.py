@@ -394,6 +394,39 @@ async def fiken_purchase_get_tool(purchase_id: int, slug: str | None = None) -> 
     )
 
 
+@mcp.tool()
+async def fiken_purchase_create_tool(
+    date: str,
+    kind: str,
+    lines: list[dict],
+    currency: str = "NOK",
+    supplier_id: int | None = None,
+    due_date: str | None = None,
+    payment_account: str | None = None,
+    payment_date: str | None = None,
+    kid: str | None = None,
+    identifier: str | None = None,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Opprett innkomande faktura/kjøp. kind: 'cash_purchase'|'invoice'|'cash_and_invoice'. lines: {netPrice, vat, vatType, account?, description?}. Beløp i øre. confirm=False gir dry-run."""
+    return await _purchases.fiken_purchase_create(
+        _get_client(),
+        date=date,
+        kind=kind,
+        lines=lines,
+        currency=currency,
+        supplier_id=supplier_id,
+        due_date=due_date,
+        payment_account=payment_account,
+        payment_date=payment_date,
+        kid=kid,
+        identifier=identifier,
+        slug=slug,
+        confirm=confirm,
+    )
+
+
 # ── Bankkontoar ─────────────────────────────────────────────────────────────
 @mcp.tool()
 async def fiken_bank_accounts_list_tool(

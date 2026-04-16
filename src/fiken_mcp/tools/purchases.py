@@ -89,3 +89,70 @@ async def fiken_purchase_get(
     if isinstance(res, dict) and not res.get("error"):
         res["total"] = _purchase_total(res)
     return res
+
+
+async def fiken_purchase_create(
+    client: FikenClient,
+    *,
+    date: str,
+    kind: str,
+    lines: list[dict[str, Any]],
+    currency: str = "NOK",
+    supplier_id: int | None = None,
+    due_date: str | None = None,
+    payment_account: str | None = None,
+    payment_date: str | None = None,
+    kid: str | None = None,
+    identifier: str | None = None,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict[str, Any]:
+    """Opprett innkomande faktura / kjøp. Krev confirm=True.
+
+    `kind`: 'cash_purchase' | 'invoice' | 'cash_and_invoice'.
+    `lines`: liste av {netPrice, vat, vatType, account?, description?}. Beløp i øre.
+    """
+    resolved = await _slug(client, slug)
+    if isinstance(resolved, dict):
+        return resolved
+
+    payload: dict[str, Any] = {
+        "date": date,
+        "kind": kind,
+        "lines": lines,
+        "currency": currency,
+    }
+    if supplier_id is not None:
+        payload["supplierId"] = supplier_id
+    if due_date is not None:
+        payload["dueDate"] = due_date
+    if payment_account is not None:
+        payload["paymentAccount"] = payment_account
+    if payment_date is not None:
+        payload["paymentDate"] = payment_date
+    if kid is not None:
+        payload["kid"] = kid
+    if identifier is not None:
+        payload["identifier"] = identifier
+
+    gross_total = sum(
+        int(ln.get("netPrice", 0)) + int(ln.get("vat", 0)) for ln in lines
+    )
+
+    if not confirm:
+        supplier_txt = f"leverandør {supplier_id}" if supplier_id else "ukjent leverandør"
+        return {
+            "dry_run": True,
+            "operation": "POST /purchases",
+            "summary": (
+                f"Vil opprette {kind} frå {supplier_txt}, "
+                f"{len(lines)} linjer, {gross_total} øre ({gross_total / 100:.2f} NOK), "
+                f"dato {date}"
+            ),
+            "payload": payload,
+            "note": "Kall på nytt med confirm=True for å utføre.",
+        }
+
+    return await client.request(
+        "POST", f"/companies/{resolved}/purchases", json=payload
+    )

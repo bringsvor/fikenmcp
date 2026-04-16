@@ -1,6 +1,6 @@
 import httpx
 
-from fiken_mcp.tools.purchases import fiken_purchases_list, fiken_purchase_get
+from fiken_mcp.tools.purchases import fiken_purchases_list, fiken_purchase_get, fiken_purchase_create
 
 SLUG = "test-company"
 
@@ -65,3 +65,45 @@ async def test_purchase_get(client, mock_api):
     result = await fiken_purchase_get(client, 1, slug=SLUG)
     assert result["purchaseId"] == 1
     assert result["total"] == 12500
+
+
+# --- Create ---
+
+
+async def test_purchase_create_dry_run(client, mock_api):
+    lines = [{"netPrice": 80000, "vat": 20000, "vatType": "HIGH", "account": "4000"}]
+    result = await fiken_purchase_create(
+        client, date="2026-04-16", kind="invoice", lines=lines,
+        supplier_id=42, slug=SLUG,
+    )
+    assert result["dry_run"] is True
+    assert "invoice" in result["summary"]
+    assert "leverandør 42" in result["summary"]
+    assert "100000 øre" in result["summary"]
+    assert result["payload"]["currency"] == "NOK"
+
+
+async def test_purchase_create_confirm(client, mock_api):
+    mock_api.post(f"/companies/{SLUG}/purchases").respond(
+        201, json={}, headers={"Location": "/purchases/5"}
+    )
+    lines = [{"netPrice": 50000, "vat": 12500, "vatType": "HIGH"}]
+    result = await fiken_purchase_create(
+        client, date="2026-04-16", kind="cash_purchase", lines=lines,
+        payment_account="1920", payment_date="2026-04-16",
+        slug=SLUG, confirm=True,
+    )
+    assert result == {}
+
+
+async def test_purchase_create_with_optional_fields(client, mock_api):
+    lines = [{"netPrice": 10000, "vat": 0, "vatType": "NONE"}]
+    result = await fiken_purchase_create(
+        client, date="2026-04-16", kind="invoice", lines=lines,
+        due_date="2026-05-16", kid="12345678", identifier="F-2026-042",
+        slug=SLUG,
+    )
+    assert result["dry_run"] is True
+    assert result["payload"]["dueDate"] == "2026-05-16"
+    assert result["payload"]["kid"] == "12345678"
+    assert result["payload"]["identifier"] == "F-2026-042"
