@@ -13,6 +13,12 @@ BRINGSVOR = {
     "customer": False,
     "language": "Norwegian",
     "currency": "NOK",
+    "address": {
+        "streetAddress": "Leina 38B",
+        "city": "SANDSHAMN",
+        "postCode": "6089",
+        "country": "Norge",
+    },
 }
 
 
@@ -121,7 +127,7 @@ async def fiken_donate(
 
     purchase_payload = {
         "date": _today(),
-        "kind": "invoice",
+        "kind": "supplier",
         "currency": "NOK",
         "supplierId": supplier_id,
         "lines": [

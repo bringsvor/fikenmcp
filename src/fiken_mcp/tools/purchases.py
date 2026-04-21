@@ -109,7 +109,7 @@ async def fiken_purchase_create(
 ) -> dict[str, Any]:
     """Opprett innkomande faktura / kjøp. Krev confirm=True.
 
-    `kind`: 'cash_purchase' | 'invoice' | 'cash_and_invoice'.
+    `kind`: 'supplier' | 'cash_purchase' | 'personal' | 'personal_cash_purchase'.
     `lines`: liste av {netPrice, vat, vatType, account?, description?}. Beløp i øre.
     """
     resolved = await _slug(client, slug)

@@ -51,13 +51,13 @@ cd fikenmcp
 uv sync --extra dev
 ```
 
-### 2. Lag Fiken API-token
+### 2. Lag personleg API-nøkkel
 
 1. Logg inn på [fiken.no](https://fiken.no)
-2. Gå til **Innstillinger** (tannhjulet oppe til høgre)
-3. Vel **Fiken API** i sidemenyen
-4. Klikk **Opprett nytt API-token**
-5. Gi tokenet eit namn (t.d. "Claude MCP") og lagre
+2. Klikk på brukarnamnet ditt oppe til høgre → **Brukerinnstillinger**
+3. Scroll ned til **Personlige API-nøkler**
+4. Klikk **Ny API-nøkkel**
+5. Gi nøkkelen eit namn (t.d. "torvald_mcp") og lagre
 
 ### 3. Konfigurer
 

@@ -410,7 +410,7 @@ async def fiken_purchase_create_tool(
     slug: str | None = None,
     confirm: bool = False,
 ) -> dict:
-    """Opprett innkomande faktura/kjøp. kind: 'cash_purchase'|'invoice'|'cash_and_invoice'. lines: {netPrice, vat, vatType, account?, description?}. Beløp i øre. confirm=False gir dry-run."""
+    """Opprett innkomande faktura/kjøp. kind: 'supplier'|'cash_purchase'|'personal'|'personal_cash_purchase'. lines: {netPrice, vat, vatType, account?, description?}. Beløp i øre. confirm=False gir dry-run."""
     return await _purchases.fiken_purchase_create(
         _get_client(),
         date=date,
