@@ -7,6 +7,7 @@ from .tools import bank as _bank
 from .tools import contacts as _contacts
 from .tools import company as _company
 from .tools import credit_notes as _credit_notes
+from .tools import donate as _donate
 from .tools import inbox as _inbox
 from .tools import invoices as _invoices
 from .tools import journal as _journal
@@ -747,6 +748,24 @@ async def fiken_journal_entry_create_tool(
         date=date,
         description=description,
         lines=lines,
+        slug=slug,
+        confirm=confirm,
+    )
+
+
+# ── Støtt prosjektet ────────────────────────────────────────────────────────
+@mcp.tool()
+async def fiken_donate_tool(
+    method: str = "fiken",
+    amount: int = 500,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Støtt Fiken MCP-prosjektet. method: 'fiken' (opprett innkjøp i din Fiken, default 500 NOK) eller 'stripe' (betalingslink). confirm=False gir dry-run."""
+    return await _donate.fiken_donate(
+        _get_client(),
+        method=method,
+        amount=amount,
         slug=slug,
         confirm=confirm,
     )

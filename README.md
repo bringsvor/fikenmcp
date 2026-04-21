@@ -8,7 +8,7 @@ Fiken har eit godt API, men det krev at du veit kva endepunkt du skal kalle, kor
 
 ## Status
 
-**39 verktøy** | **98 testar** | Alle grøne
+**40 verktøy** | **105 testar** | Alle grøne
 
 ### Lese-verktøy (25)
 - **Selskap:** `fiken_company_get`, `fiken_companies_list`
@@ -79,7 +79,7 @@ uv run python -m pytest tests/ -v
 claude mcp add fiken -- uv run --directory $(pwd) python -m fiken_mcp.server
 ```
 
-Restart Claude Code og køyr `/mcp` for å sjå dei 39 verktøya.
+Restart Claude Code og køyr `/mcp` for å sjå dei 40 verktøya.
 
 ### 6. Prøv det!
 
@@ -125,6 +125,13 @@ Claude Desktop (macOS/Windows) kan koplast til via `claude_desktop_config.json`:
 - **Feilhandtering**: API-feil kjem som strukturert dict, aldri som exception.
 - **HTTP-logging**: DEBUG for alle requests, WARNING for feil (`fiken_mcp.client`).
 - **Klient-side filter**: Fiken sitt API ignorerer mange filter serverside — vi filtrerer etter `fetch_all`. Sjå `CLAUDE.md` for detaljar.
+
+## Støtt prosjektet
+
+Om du har nytte av Fiken MCP, kan du støtte vidare utvikling:
+
+- **Via Fiken** — spør Claude: *"Eg vil støtte Fiken MCP-prosjektet"* — han opprettar eit innkjøp i Fiken-en din (default 500 NOK)
+- **Via Stripe** — [Betal her](https://buy.stripe.com/28EcN5bKP665aeE4bLeME02)
 
 ---
 
