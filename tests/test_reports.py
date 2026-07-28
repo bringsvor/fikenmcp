@@ -37,6 +37,81 @@ async def test_balance_sheet(client, mock_api):
     assert len(result["equity_and_liabilities"]["accounts"]) == 2
 
 
+# --- Balance sheet grouping (rekneskapslova § 6-2) ---
+
+
+GROUPED_BALANCES = [
+    {"code": "1200", "name": "Maskiner", "balance": 4000000},          # anleggsmidlar
+    {"code": "1500", "name": "Kundefordringar", "balance": 1000000},   # omløpsmidlar
+    {"code": "1920:10001", "name": "Folio", "balance": 500000},        # omløpsmidlar, underkonto
+    {"code": "2020", "name": "Aksjekapital", "balance": -3000000},     # eigenkapital
+    {"code": "2120", "name": "Utsett skatt", "balance": -200000},      # avsetning
+    {"code": "2250", "name": "Gjeld til eigar", "balance": -1500000},  # langsiktig
+    {"code": "2380:10001", "name": "Kassakreditt", "balance": -800000},  # kortsiktig, underkonto
+    {"code": "2400", "name": "Leverandørgjeld", "balance": -500000},   # kortsiktig
+]
+
+
+async def test_balance_sheet_groups(client, mock_api):
+    """Kontoklassane er delte etter oppstillingsplanen, og underkontoar treffer rett gruppe."""
+    mock_api.get(f"/companies/{SLUG}/accountBalances").mock(
+        return_value=_balances_response(GROUPED_BALANCES)
+    )
+    result = await fiken_balance_sheet(client, "2026-04-16", slug=SLUG)
+
+    ag = result["assets"]["groups"]
+    assert ag["anleggsmidler"]["total"] == 4000000
+    assert ag["omlopsmidler"]["total"] == 1500000  # 1500 + underkonto 1920:10001
+
+    eg = result["equity_and_liabilities"]["groups"]
+    assert eg["egenkapital"]["total"] == -3000000
+    assert eg["avsetning_forpliktelser"]["total"] == -200000
+    assert eg["langsiktig_gjeld"]["total"] == -1500000
+    assert eg["kortsiktig_gjeld"]["total"] == -1300000  # underkonto 2380:10001 + 2400
+
+    # Underkontoen med kolon må hamne i kortsiktig, ikkje falle utanfor
+    assert [a["code"] for a in eg["kortsiktig_gjeld"]["accounts"]] == ["2380:10001", "2400"]
+
+
+async def test_balance_sheet_groups_sum_to_class_total(client, mock_api):
+    """Ingen kontokode skal falle utanfor alle grupper."""
+    mock_api.get(f"/companies/{SLUG}/accountBalances").mock(
+        return_value=_balances_response(GROUPED_BALANCES)
+    )
+    result = await fiken_balance_sheet(client, "2026-04-16", slug=SLUG)
+
+    for klass in ("assets", "equity_and_liabilities"):
+        groups = result[klass]["groups"].values()
+        assert sum(g["total"] for g in groups) == result[klass]["total"]
+        assert sum(len(g["accounts"]) for g in groups) == len(result[klass]["accounts"])
+
+
+async def test_balance_sheet_zero_accounts_excluded_by_default(client, mock_api):
+    """Nullsaldoar er støy i ein balanse, men skal ikkje endre nokon sum."""
+    balances = [
+        {"code": "1920", "name": "Bank", "balance": 5000000},
+        {"code": "2241", "name": "AVSLUTTA Lån", "balance": 0},
+        {"code": "2020", "name": "Aksjekapital", "balance": -3000000},
+    ]
+    route = mock_api.get(f"/companies/{SLUG}/accountBalances")
+    route.side_effect = [_balances_response(balances), _balances_response(balances)]
+
+    default = await fiken_balance_sheet(client, "2026-04-16", slug=SLUG)
+    with_zero = await fiken_balance_sheet(
+        client, "2026-04-16", slug=SLUG, include_zero=True
+    )
+
+    assert [a["code"] for a in default["equity_and_liabilities"]["accounts"]] == ["2020"]
+    assert "2241" in [a["code"] for a in with_zero["equity_and_liabilities"]["accounts"]]
+    assert with_zero["equity_and_liabilities"]["groups"]["langsiktig_gjeld"]["total"] == 0
+
+    # Filtreringa er reint kosmetisk — alle summar skal vere identiske
+    for key in ("balance_check",):
+        assert default[key] == with_zero[key]
+    for klass in ("assets", "equity_and_liabilities"):
+        assert default[klass]["total"] == with_zero[klass]["total"]
+
+
 async def test_balance_sheet_propagates_error(client, mock_api):
     mock_api.get(f"/companies/{SLUG}/accountBalances").respond(
         401, json={"message": "Unauthorized"}

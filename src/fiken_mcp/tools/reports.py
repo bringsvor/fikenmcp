@@ -12,6 +12,20 @@ REVENUE_PREFIXES = ("3",)
 EXPENSE_PREFIXES = ("4", "5", "6", "7")
 FINANCE_PREFIXES = ("8",)
 
+# Oppstillingsplan etter rekneskapslova § 6-2. To siffer, og 10–19 / 20–29
+# dekkjer 1xxx og 2xxx uttømmande, så gruppetotalane summerer seg til klassen.
+# Underkontoar ("2380:10001") treffer rett gruppe via startswith.
+ASSET_GROUPS = (
+    ("anleggsmidler", ("10", "11", "12", "13")),
+    ("omlopsmidler", ("14", "15", "16", "17", "18", "19")),
+)
+EQUITY_LIAB_GROUPS = (
+    ("egenkapital", ("20",)),
+    ("avsetning_forpliktelser", ("21",)),
+    ("langsiktig_gjeld", ("22",)),
+    ("kortsiktig_gjeld", ("23", "24", "25", "26", "27", "28", "29")),
+)
+
 
 def _bucket(accounts: list[dict[str, Any]], prefixes: tuple[str, ...]) -> dict[str, Any]:
     matched = [a for a in accounts if a.get("code", "").startswith(prefixes)]
@@ -19,8 +33,23 @@ def _bucket(accounts: list[dict[str, Any]], prefixes: tuple[str, ...]) -> dict[s
     return {"total": total, "accounts": matched}
 
 
+def _class_with_groups(
+    accounts: list[dict[str, Any]],
+    prefixes: tuple[str, ...],
+    groups: tuple[tuple[str, tuple[str, ...]], ...],
+) -> dict[str, Any]:
+    """Bøtt ein kontoklasse og del han i undergrupper etter oppstillingsplanen."""
+    klass = _bucket(accounts, prefixes)
+    klass["groups"] = {name: _bucket(klass["accounts"], pfx) for name, pfx in groups}
+    return klass
+
+
 async def fiken_balance_sheet(
-    client: FikenClient, date: str, *, slug: str | None = None
+    client: FikenClient,
+    date: str,
+    *,
+    slug: str | None = None,
+    include_zero: bool = False,
 ) -> dict[str, Any]:
     """Balanse per dato (yyyy-MM-dd) — aggregert frå accountBalances.
 
@@ -28,14 +57,23 @@ async def fiken_balance_sheet(
     ikkje 0 før årsavslutning, fordi Fiken sine kumulative resultat-kontoar
     (3xxx–8xxx) ikkje er overført til eigenkapitalen. Positivt `balance_check`
     = akkumulert overskot ikkje endå disponert; negativt = akkumulert underskot.
+
+    `assets` og `equity_and_liabilities` har kvar ein `groups`-nøkkel med
+    oppdelinga etter rekneskapslova § 6-2 (anleggsmidlar/omløpsmidlar,
+    eigenkapital/avsetningar/langsiktig/kortsiktig gjeld).
+
+    `include_zero=False` (standard) held kontoar med saldo 0 utanfor. Dei
+    påverkar ingen sum, og dei fleste kontoane i ein kontoplan står i 0.
     """
     res = await fiken_account_balances(client, date, slug=slug, fetch_all=True)
     if isinstance(res, dict) and res.get("error"):
         return res
     accounts = res.get("data", [])
+    if not include_zero:
+        accounts = [a for a in accounts if int(a.get("balance", 0)) != 0]
 
-    assets = _bucket(accounts, ASSET_PREFIXES)
-    equity_liab = _bucket(accounts, EQUITY_LIAB_PREFIXES)
+    assets = _class_with_groups(accounts, ASSET_PREFIXES, ASSET_GROUPS)
+    equity_liab = _class_with_groups(accounts, EQUITY_LIAB_PREFIXES, EQUITY_LIAB_GROUPS)
 
     return {
         "date": date,

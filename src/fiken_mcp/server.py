@@ -254,9 +254,15 @@ async def fiken_account_balance_get_tool(
 
 # ── Rapportar (rekna ut frå accountBalances) ────────────────────────────────
 @mcp.tool()
-async def fiken_balance_sheet_tool(date: str, slug: str | None = None) -> dict:
-    """Balanse per dato (yyyy-MM-dd). Aggregert 1xxx=eigedelar, 2xxx=eigenkapital+gjeld. Beløp i øre."""
-    return await _reports.fiken_balance_sheet(_get_client(), date=date, slug=slug)
+async def fiken_balance_sheet_tool(
+    date: str, slug: str | None = None, include_zero: bool = False
+) -> dict:
+    """Balanse per dato (yyyy-MM-dd). 1xxx=eigedelar, 2xxx=eigenkapital+gjeld, med `groups`-oppdeling
+    (anleggsmidlar/omløpsmidlar, eigenkapital/avsetningar/langsiktig/kortsiktig gjeld). Beløp i øre.
+    include_zero=True tek med kontoar som står i 0."""
+    return await _reports.fiken_balance_sheet(
+        _get_client(), date=date, slug=slug, include_zero=include_zero
+    )
 
 
 @mcp.tool()
