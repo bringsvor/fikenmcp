@@ -1,4 +1,6 @@
 .env
+tokens.json
+*.tokens.json
 fiken-mcp-spec.md
 .venv/
 __pycache__/

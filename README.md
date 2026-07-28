@@ -51,19 +51,58 @@ cd fikenmcp
 uv sync --extra dev
 ```
 
-### 2. Lag personleg API-nøkkel
+### 2. Skaff autentisering — vel EIN av to
+
+**Alternativ A — personleg API-nøkkel (enklast):**
 
 1. Logg inn på [fiken.no](https://fiken.no)
 2. Klikk på brukarnamnet ditt oppe til høgre → **Brukerinnstillinger**
 3. Scroll ned til **Personlige API-nøkler**
-4. Klikk **Ny API-nøkkel**
-5. Gi nøkkelen eit namn (t.d. "torvald_mcp") og lagre
+4. Klikk **Ny API-nøkkel**, gi han eit namn (t.d. "torvald_mcp") og lagre
+5. Legg nøkkelen i `.env` som `FIKEN_API_TOKEN`
+
+**Alternativ B — OAuth 2.0:** Fiken har berre *authorization code*-flyten (inga
+maskin-til-maskin-nøkkel), så tokenet vert oppretta via ei eingongs
+nettlesar-godkjenning:
+
+1. Registrer ein OAuth-app hos Fiken → du får `client_id` og `client_secret`.
+2. **Registrer redirect-URI-en** i Fiken-appen. Bruk nøyaktig
+   `http://localhost:8473/callback` — teikn for teikn. Krav:
+   - `http` (ikkje `https`) — Fiken tillèt vanleg http berre for `localhost`
+   - host `localhost` (ikkje `127.0.0.1`), port `8473`, path `/callback`, ingen
+     skråstrek på slutten
+   - må vere **identisk** med `FIKEN_REDIRECT_URI` i `.env` (default er verdien over)
+
+   > ⚠️ Er han ikkje registrert — eller ikkje heilt lik — svarar Fiken med
+   > *«Feil redirect_uri. Sjekk at redirect_uri er angitt og at den er i listen
+   > over godkjente endepunkter for din app.»*
+3. I `.env`: sett `FIKEN_CLIENT_ID` og `FIKEN_CLIENT_SECRET`, og lat
+   `FIKEN_API_TOKEN` stå tom.
+4. Køyr éin gong:
+   ```bash
+   uv run fiken-auth
+   ```
+   Kommandoen startar ein lokal callback-server på port 8473 og opnar
+   nettlesaren, der du får samtykke-dialogen frå Fiken:
+
+   ![Fiken-samtykke](docs/oauth-consent.png)
+
+   Trykk **Godkjenn**. Fiken sender deg tilbake til callback-serveren, som byter
+   koden mot token og kvitterer:
+
+   ![Autorisering fullført](docs/oauth-done.png)
+
+   `access`- og `refresh`-token vert lagra i `~/.config/fiken-mcp/tokens.json`
+   (kan overstyrast med `FIKEN_TOKEN_FILE`). Access-tokenet varer ~1 time, men
+   serveren fornyar det automatisk med refresh-tokenet — både før utløp og
+   reaktivt ved eit `401` — så du treng normalt ikkje køyre `fiken-auth` på nytt.
 
 ### 3. Konfigurer
 
 ```bash
 cp .env.example .env
-# Rediger .env med din FIKEN_API_TOKEN
+# Rediger .env: anten FIKEN_API_TOKEN (alt. A) eller
+# FIKEN_CLIENT_ID + FIKEN_CLIENT_SECRET (alt. B).
 # FIKEN_COMPANY_SLUG er valfritt — auto-oppdaga frå API-et
 ```
 
@@ -114,9 +153,17 @@ Claude Desktop (macOS/Windows) kan koplast til via `claude_desktop_config.json`:
 
 | Variabel | Påkravd | Default |
 |---|---|---|
-| `FIKEN_API_TOKEN` | ja | — |
+| `FIKEN_API_TOKEN` | alt. A | — |
+| `FIKEN_CLIENT_ID` | alt. B | — |
+| `FIKEN_CLIENT_SECRET` | alt. B | — |
+| `FIKEN_REDIRECT_URI` | nei (OAuth) | `http://localhost:8473/callback` |
+| `FIKEN_TOKEN_FILE` | nei (OAuth) | `~/.config/fiken-mcp/tokens.json` |
 | `FIKEN_COMPANY_SLUG` | nei | auto-oppdaga frå API-et |
 | `FIKEN_BASE_URL` | nei | `https://api.fiken.no/api/v2` |
+
+Sett anten `FIKEN_API_TOKEN` (personleg token) **eller**
+`FIKEN_CLIENT_ID` + `FIKEN_CLIENT_SECRET` (OAuth). Om `FIKEN_API_TOKEN` er sett,
+vinn den og OAuth vert ikkje brukt.
 
 ## Arkitektur
 

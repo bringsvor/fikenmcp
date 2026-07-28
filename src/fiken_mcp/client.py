@@ -1,11 +1,13 @@
 import asyncio
 import logging
+import time
 from typing import Any
 
 import httpx
 
 logger = logging.getLogger("fiken_mcp.client")
 
+from . import auth
 from .config import Settings
 
 MAX_PAGE_SIZE = 100
@@ -18,16 +20,69 @@ class FikenClient:
         self._semaphore = asyncio.Semaphore(1)
         self._http = httpx.AsyncClient(
             base_url=self.settings.base_url,
-            headers={
-                "Authorization": f"Bearer {self.settings.api_token}",
-                "Accept": "application/json",
-            },
+            headers={"Accept": "application/json"},
             timeout=30.0,
         )
         self._slug: str | None = self.settings.company_slug
+        self._oauth: bool = self.settings.use_oauth
+        self._tokens: dict[str, Any] | None = None
+        self._token_lock = asyncio.Lock()
 
     async def aclose(self) -> None:
         await self._http.aclose()
+
+    # ── Autentisering ────────────────────────────────────────────────────────
+    async def _auth_header(self) -> dict[str, str]:
+        """Bygg Authorization-header. Returnerer ein feil-dict ved problem."""
+        if not self._oauth:
+            if not self.settings.api_token:
+                return _error(
+                    401,
+                    "Ingen autentisering konfigurert — set FIKEN_API_TOKEN, "
+                    "eller FIKEN_CLIENT_ID + FIKEN_CLIENT_SECRET og køyr `fiken-auth`",
+                    None,
+                )
+            return {"Authorization": f"Bearer {self.settings.api_token}"}
+        token = await self._valid_access_token()
+        if isinstance(token, dict):  # feil-dict
+            return token
+        return {"Authorization": f"Bearer {token}"}
+
+    async def _valid_access_token(self, *, force_refresh: bool = False) -> str | dict[str, Any]:
+        async with self._token_lock:
+            if self._tokens is None:
+                self._tokens = auth.load_tokens(self.settings)
+            if self._tokens is None:
+                return _error(
+                    401,
+                    "OAuth ikkje autorisert enno — køyr `uv run fiken-auth` éin gong",
+                    None,
+                )
+            expires_at = self._tokens.get("expires_at")
+            expired = expires_at is not None and time.time() >= expires_at
+            if force_refresh or expired:
+                refreshed = await self._refresh()
+                if isinstance(refreshed, dict) and refreshed.get("error"):
+                    return refreshed
+            return self._tokens["access_token"]
+
+    async def _refresh(self) -> dict[str, Any]:
+        refresh_token = (self._tokens or {}).get("refresh_token")
+        if not refresh_token:
+            return _error(
+                401,
+                "Manglar refresh_token — reautoriser med `uv run fiken-auth`",
+                None,
+            )
+        try:
+            new = await auth.refresh_tokens_async(self.settings, refresh_token, self._http)
+        except auth.OAuthError as exc:
+            return _error(401, f"Klarte ikkje å fornye access-token: {exc}", None)
+        # Fiken sender ikkje alltid nytt refresh_token — behald det gamle då.
+        new.setdefault("refresh_token", refresh_token)
+        self._tokens = new
+        auth.save_tokens(self.settings, new)
+        return new
 
     async def request(
         self,
@@ -106,10 +161,15 @@ class FikenClient:
         files: Any | None = None,
         data: dict[str, Any] | None = None,
         attempt: int = 0,
+        auth_retry: bool = False,
     ) -> tuple[dict[str, Any] | list[Any], httpx.Headers]:
+        headers = await self._auth_header()
+        if isinstance(headers, dict) and headers.get("error"):
+            return headers, httpx.Headers()
         try:
             response = await self._http.request(
-                method, path, params=params, json=json, files=files, data=data
+                method, path, params=params, json=json, files=files, data=data,
+                headers=headers,
             )
         except httpx.HTTPError as exc:
             logger.warning("%s %s feil: %s", method, path, exc)
@@ -121,8 +181,18 @@ class FikenClient:
             await asyncio.sleep(2**attempt)
             return await self._request_with_retry(
                 method, path, params=params, json=json, files=files, data=data,
-                attempt=attempt + 1,
+                attempt=attempt + 1, auth_retry=auth_retry,
             )
+
+        # OAuth: eit 401 kan tyde utgått access-token — forny éin gong og prøv på nytt.
+        if response.status_code == 401 and self._oauth and not auth_retry:
+            refreshed = await self._valid_access_token(force_refresh=True)
+            if not (isinstance(refreshed, dict) and refreshed.get("error")):
+                logger.debug("401 → fornya access-token, prøver %s %s på nytt", method, path)
+                return await self._request_with_retry(
+                    method, path, params=params, json=json, files=files, data=data,
+                    attempt=attempt, auth_retry=True,
+                )
 
         if response.status_code >= 400:
             logger.warning("%s %s → %d", method, path, response.status_code)

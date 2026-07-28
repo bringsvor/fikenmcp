@@ -28,3 +28,4 @@ packages = ["src/fiken_mcp"]
 
 [project.scripts]
 fiken-mcp = "fiken_mcp.server:main"
+fiken-auth = "fiken_mcp.auth:main"

@@ -16,6 +16,7 @@ Spec §11 Fase 1, Fase 2 (read-only), and Fase 3 (writes) are implemented, plus 
 - **Contact updates use PUT, not PATCH.** The API returns 405 on PATCH. `fiken_contact_update` does read-modify-write: GET current → merge changes → PUT full object. Read-only fields (`contactId`, `createdDate`, `lastModifiedDate`, `contactPerson`, `customerAccountCode`, `supplierAccountCode`) are stripped before PUT.
 - **Product updates also use PUT.** Same read-modify-write pattern. Read-only fields stripped: `productId`, `createdDate`, `lastModifiedDate`.
 - **Inbox is read-only.** Only `GET /inbox` exists in the API — no create, no individual get, no upload. Fiken's OCR/invoice parsing is GUI-only.
+- **OAuth token behaviour (empirical, live-tested 2026-07-28):** the token endpoint accepts **HTTP Basic** client auth (`client_id:client_secret`); the authorize endpoint rejects unregistered `redirect_uri` with a plain error page (the URI must be added verbatim in the Fiken app — `http://localhost:8473/callback`, http is allowed for `localhost`). Access tokens live **~1 hour** (`expires_in` ≈ 3600), so refresh matters. On `grant_type=refresh_token` Fiken returns a **new access token but the same refresh token** (not rotated) — `FikenClient._refresh` keeps the old refresh token when the response omits one. No `scope` param is sent (the app registration decides scope).
 - **No purchase attachments** in the API. Attachments are only available on invoices (outgoing), journal entries, credit note drafts, sales, offers, and order confirmations.
 
 ## Planned stack
@@ -32,7 +33,10 @@ Critical design constraints:
 
 - **Single `FikenClient` singleton** shared by all tools. It holds an `asyncio.Semaphore(1)` because Fiken allows only **1 concurrent request per user** — every HTTP call must go through the semaphore.
 - **`companySlug` is auto-fetched** from `/user/` at startup and cached. Tools accept an override parameter but default to `FIKEN_COMPANY_SLUG`.
-- **Bearer auth** via `FIKEN_API_TOKEN` env var. Base URL `https://api.fiken.no/api/v2`.
+- **Auth — two modes**, resolved in `Settings.use_oauth` (`config.py`):
+  - **Personal token**: `FIKEN_API_TOKEN` → static `Bearer`. Simplest; wins if set.
+  - **OAuth 2.0** (authorization code): `FIKEN_CLIENT_ID` + `FIKEN_CLIENT_SECRET`, no `FIKEN_API_TOKEN`. Fiken has *no* client_credentials flow, so tokens are minted by a one-time browser consent: `uv run fiken-auth` (`auth.py`) opens the authorize URL, catches the redirect on a local server (`FIKEN_REDIRECT_URI`, default `http://localhost:8473/callback` — **must be registered identically in the Fiken app**), exchanges the code (HTTP Basic client auth), and persists `{access_token, refresh_token, expires_at}` to `FIKEN_TOKEN_FILE` (default `~/.config/fiken-mcp/tokens.json`, chmod 600). `FikenClient` refreshes both **proactively** (past `expires_at`, 60 s skew) and **reactively** (one refresh+retry on a 401). Token endpoint is `https://fiken.no/oauth/token` (host differs from the API base — absolute URL passed to the shared httpx client).
+- Base URL `https://api.fiken.no/api/v2`.
 - **Retry policy**: 429 → exponential backoff, max 3 attempts. 401/400/404 → return structured error objects (not raised exceptions) as the MCP tool result.
 - **Pagination**: list tools accept `page`/`pageSize` (default 25, max 100) and optional `fetch_all=True`; responses include `{data, total, page, pageSize}`.
 - **HTTP logging**: All requests logged at DEBUG level, errors at WARNING (`fiken_mcp.client`).
