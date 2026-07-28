@@ -117,7 +117,7 @@ async def test_journal_entry_create_dry_run(client, mock_api):
 
 
 async def test_journal_entry_create_confirm(client, mock_api):
-    mock_api.post(f"/companies/{SLUG}/journalEntries").respond(
+    route = mock_api.post(f"/companies/{SLUG}/generalJournalEntries").respond(
         201, json={"journalEntryId": 10}
     )
     lines = [{"amount": 5000, "account": "1920"}, {"amount": -5000, "account": "3000"}]
@@ -125,6 +125,59 @@ async def test_journal_entry_create_confirm(client, mock_api):
         client, date="2026-04-16", description="Bilag", lines=lines, slug=SLUG, confirm=True
     )
     assert result == {"journalEntryId": 10}
+
+    import json as _json
+
+    sent = _json.loads(route.calls.last.request.content)
+    assert sent["journalEntries"] == [
+        {
+            "description": "Bilag",
+            "date": "2026-04-16",
+            "lines": [{"amount": 5000, "debitAccount": "1920", "creditAccount": "3000"}],
+        }
+    ]
+
+
+async def test_journal_entry_create_rejects_long_description(client, mock_api):
+    """Fiken prefixes API entries and caps the total at 200 chars — catch it in dry-run."""
+    from fiken_mcp.tools.journal import MAX_DESCRIPTION
+
+    lines = [{"amount": 5000, "account": "1920"}, {"amount": -5000, "account": "3000"}]
+    result = await fiken_journal_entry_create(
+        client,
+        date="2026-04-16",
+        description="x" * (MAX_DESCRIPTION + 1),
+        lines=lines,
+        slug=SLUG,
+    )
+    assert result["error"] is True
+    assert str(MAX_DESCRIPTION) in result["message"]
+
+
+def test_to_fiken_lines_pairs_single_debit_and_credit():
+    """The common two-account entry collapses to one Fiken line."""
+    from fiken_mcp.tools.journal import _to_fiken_lines
+
+    lines = [{"amount": 180000, "account": "2241"}, {"amount": -180000, "account": "2250"}]
+    assert _to_fiken_lines(lines) == [
+        {"amount": 180000, "debitAccount": "2241", "creditAccount": "2250"}
+    ]
+
+
+def test_to_fiken_lines_splits_multi_leg_entry():
+    """More than one leg per side becomes separate debit-only/credit-only lines."""
+    from fiken_mcp.tools.journal import _to_fiken_lines
+
+    lines = [
+        {"amount": 80000, "account": "2400"},
+        {"amount": -72240, "account": "8151", "vatCode": "0"},
+        {"amount": -7760, "account": "7770"},
+    ]
+    assert _to_fiken_lines(lines) == [
+        {"amount": 80000, "debitAccount": "2400"},
+        {"amount": 72240, "creditAccount": "8151", "creditVatCode": 0},
+        {"amount": 7760, "creditAccount": "7770"},
+    ]
 
 
 async def test_journal_entry_create_unbalanced_rejected():

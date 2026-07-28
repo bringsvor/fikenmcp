@@ -17,6 +17,46 @@ def _in_range(d: str | None, frm: str | None, to: str | None) -> bool:
     return True
 
 
+# Fiken prefiksar frie posteringar frå API-et og validerer summen mot 200 teikn.
+_API_DESCRIPTION_PREFIX = "Fri postering registrert via API: "
+MAX_DESCRIPTION = 200 - len(_API_DESCRIPTION_PREFIX)
+
+
+def _to_fiken_lines(lines: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Omset signerte linjer {amount, account} til Fiken sitt debet/kredit-format.
+
+    Fiken tek positive beløp med `debitAccount`/`creditAccount` per linje, ikkje
+    fortegn. Eit vanleg tokonto-bilag blir difor éi linje med begge kontoane.
+    """
+    debits = [ln for ln in lines if int(ln.get("amount", 0)) > 0]
+    credits = [ln for ln in lines if int(ln.get("amount", 0)) < 0]
+
+    if len(debits) == 1 and len(credits) == 1:
+        d, c = debits[0], credits[0]
+        line: dict[str, Any] = {
+            "amount": int(d["amount"]),
+            "debitAccount": str(d["account"]),
+            "creditAccount": str(c["account"]),
+        }
+        if d.get("vatCode") is not None:
+            line["debitVatCode"] = int(d["vatCode"])
+        if c.get("vatCode") is not None:
+            line["creditVatCode"] = int(c["vatCode"])
+        return [line]
+
+    out: list[dict[str, Any]] = []
+    for ln in lines:
+        amount = int(ln.get("amount", 0))
+        if amount == 0:
+            continue
+        side = "debit" if amount > 0 else "credit"
+        item: dict[str, Any] = {"amount": abs(amount), f"{side}Account": str(ln["account"])}
+        if ln.get("vatCode") is not None:
+            item[f"{side}VatCode"] = int(ln["vatCode"])
+        out.append(item)
+    return out
+
+
 def _entry_touches_account(entry: dict[str, Any], account_prefix: str) -> bool:
     for ln in entry.get("lines", []):
         if str(ln.get("account", "")).startswith(account_prefix):
@@ -114,15 +154,31 @@ async def fiken_journal_entry_create(
             "message": "Eit bilag krev minst to linjer",
             "fiken_error": None,
         }
+    if len(description) > MAX_DESCRIPTION:
+        return {
+            "error": True,
+            "status_code": 400,
+            "message": (
+                f"description er {len(description)} teikn — maks {MAX_DESCRIPTION}. "
+                f"Fiken set '{_API_DESCRIPTION_PREFIX}' framfor teksten og krev at "
+                f"totalen held seg under 200 teikn."
+            ),
+            "fiken_error": None,
+        }
 
-    payload = {"date": date, "description": description, "lines": lines}
+    payload = {
+        "description": description,
+        "journalEntries": [
+            {"description": description, "date": date, "lines": _to_fiken_lines(lines)}
+        ],
+    }
 
     if not confirm:
         debit_sum = sum(int(ln["amount"]) for ln in lines if int(ln.get("amount", 0)) > 0)
         accounts = sorted({str(ln.get("account")) for ln in lines})
         return {
             "dry_run": True,
-            "operation": "POST /journalEntries",
+            "operation": "POST /generalJournalEntries",
             "summary": (
                 f"Vil opprette bilag: {date}  '{description}'  "
                 f"{len(lines)} linjer, {debit_sum} øre ({debit_sum / 100:.2f} NOK) over {accounts}"
@@ -132,7 +188,7 @@ async def fiken_journal_entry_create(
         }
 
     return await client.request(
-        "POST", f"/companies/{resolved}/journalEntries", json=payload
+        "POST", f"/companies/{resolved}/generalJournalEntries", json=payload
     )
 
 
