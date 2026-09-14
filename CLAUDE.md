@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Spec §11 Fase 1, Fase 2 (read-only), and Fase 3 (writes) are implemented, plus extensions: **40 MCP tools** with **124 tests**. Every write tool (`*_create`, `*_update`, `*_send`, `*_attachment_add`) defaults to `confirm=False` and returns a structured dry-run summary; the API call only happens on `confirm=True` (spec §6). Extensions beyond original spec: purchases, products (CRUD), inbox, attachments (invoice + journal entry, multipart/base64). The spec (`fiken-mcp-spec.md`, Norwegian/nynorsk) remains the source of truth for intent — but several deviations are baked in from live probing.
+Spec §11 Fase 1, Fase 2 (read-only), and Fase 3 (writes) are implemented, plus extensions: **41 MCP tools** with **129 tests**. Every write tool (`*_create`, `*_update`, `*_send`, `*_attachment_add`) defaults to `confirm=False` and returns a structured dry-run summary; the API call only happens on `confirm=True` (spec §6). Extensions beyond original spec: purchases, products (CRUD), inbox, attachments (invoice + journal entry, multipart/base64). The spec (`fiken-mcp-spec.md`, Norwegian/nynorsk) remains the source of truth for intent — but several deviations are baked in from live probing.
 
 ## Fiken API v2 gotchas (from empirical testing)
 
