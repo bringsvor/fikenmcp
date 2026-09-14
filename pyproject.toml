@@ -26,6 +26,11 @@ asyncio_mode = "auto"
 [tool.hatch.build.targets.wheel]
 packages = ["src/fiken_mcp"]
 
+[dependency-groups]
+dev = [
+    "respx>=0.23.1",
+]
+
 [project.scripts]
 fiken-mcp = "fiken_mcp.server:main"
 fiken-auth = "fiken_mcp.auth:main"

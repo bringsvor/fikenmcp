@@ -61,6 +61,28 @@ async def _find_or_create_bringsvor(
     return created.get("contactId", 0)
 
 
+async def _get_donor_info(client: FikenClient, resolved: str) -> tuple[str | None, str | None]:
+    """Hent selskapsnamn og org.nr frå donøren sin Fiken-konto."""
+    company = await client.request("GET", f"/companies/{resolved}")
+    if isinstance(company, dict) and not company.get("error"):
+        return company.get("name"), company.get("organizationNumber")
+    return None, None
+
+
+def _build_description(
+    donor_name: str | None, donor_org_number: str | None
+) -> str:
+    base = "Støtte til Fiken MCP-prosjektet"
+    parts: list[str] = []
+    if donor_name:
+        parts.append(donor_name)
+    if donor_org_number:
+        parts.append(f"org {donor_org_number}")
+    if parts:
+        return f"{base} — {', '.join(parts)}"
+    return base
+
+
 async def fiken_donate(
     client: FikenClient,
     *,
@@ -73,6 +95,7 @@ async def fiken_donate(
 
     `method`: 'fiken' (opprett innkjøp i din Fiken) eller 'stripe' (betalingslink).
     `amount`: beløp i NOK (default 500). Berre brukt for fiken-metoden.
+    Donør-info (selskapsnamn + org.nr) blir henta automatisk frå Fiken-kontoen.
     """
     if method == "stripe":
         return {
@@ -99,6 +122,7 @@ async def fiken_donate(
         return resolved
 
     amount_ore = amount * 100
+    donor_name, donor_org_number = await _get_donor_info(client, resolved)
 
     contact_result = await _find_or_create_bringsvor(client, resolved, confirm=confirm)
 
@@ -125,7 +149,7 @@ async def fiken_donate(
 
     supplier_id = contact_result if isinstance(contact_result, int) else None
 
-    purchase_payload = {
+    purchase_payload: dict[str, Any] = {
         "date": _today(),
         "kind": "supplier",
         "currency": "NOK",
@@ -135,11 +159,13 @@ async def fiken_donate(
                 "netPrice": amount_ore,
                 "vat": 0,
                 "vatType": "NONE",
-                "description": "Støtte til Fiken MCP-prosjektet",
+                "description": _build_description(donor_name, donor_org_number),
                 "account": "7770",
             }
         ],
     }
+    if donor_org_number:
+        purchase_payload["identifier"] = donor_org_number
 
     if not confirm:
         return {

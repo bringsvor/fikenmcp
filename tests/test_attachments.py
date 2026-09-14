@@ -3,6 +3,7 @@ import base64
 import httpx
 
 from fiken_mcp.tools.attachments import (
+    fiken_file_download,
     fiken_invoice_attachments_list,
     fiken_invoice_attachment_add,
     fiken_journal_entry_attachments_list,
@@ -11,6 +12,38 @@ from fiken_mcp.tools.attachments import (
 
 SLUG = "test-company"
 SAMPLE_PDF = base64.b64encode(b"%PDF-1.4 fake content").decode()
+
+
+# ── Fil-nedlasting ────────────────────────────────────────────────────────
+
+
+async def test_file_download(client, mock_api):
+    pdf_bytes = b"%PDF-1.4 fake content"
+    mock_api.get("/files/abc-123/faktura.pdf").respond(
+        200, content=pdf_bytes, headers={"content-type": "application/pdf"}
+    )
+    result = await fiken_file_download(
+        client, "https://api.fiken.no/api/v2/files/abc-123/faktura.pdf"
+    )
+    assert result["filename"] == "faktura.pdf"
+    assert result["content_type"] == "application/pdf"
+    assert result["size_bytes"] == len(pdf_bytes)
+    assert base64.b64decode(result["content_base64"]) == pdf_bytes
+
+
+async def test_file_download_error(client, mock_api):
+    mock_api.get("/files/bad-id/missing.pdf").respond(404)
+    result = await fiken_file_download(
+        client, "https://api.fiken.no/api/v2/files/bad-id/missing.pdf"
+    )
+    assert result["error"] is True
+    assert result["status_code"] == 404
+
+
+async def test_file_download_empty_url(client, mock_api):
+    result = await fiken_file_download(client, "")
+    assert result["error"] is True
+    assert result["status_code"] == 400
 
 
 # ── Faktura-vedlegg ────────────────────────────────────────────────────────

@@ -560,6 +560,15 @@ async def fiken_journal_entry_attachment_add_tool(
     )
 
 
+# ── Fil-nedlasting ─────────────────────────────────────────────────────────
+@mcp.tool()
+async def fiken_file_download_tool(
+    url: str,
+) -> dict:
+    """Last ned fil frå Fiken (PDF, bilete, etc.) via API-URL. Returnerer base64-innhald, filnamn, content_type og storleik."""
+    return await _attachments.fiken_file_download(_get_client(), url=url)
+
+
 # ── Bilag og transaksjonar ──────────────────────────────────────────────────
 @mcp.tool()
 async def fiken_journal_entries_list_tool(
@@ -701,7 +710,7 @@ async def fiken_invoice_create_tool(
     slug: str | None = None,
     confirm: bool = False,
 ) -> dict:
-    """Opprett ny faktura. Datoar i yyyy-MM-dd, beløp i øre. confirm=False gir dry-run."""
+    """Opprett ny faktura. lines: {description, unitPrice, quantity, vatType, incomeAccount?, productId?, discount?}. Beløp i øre. Treng incomeAccount (t.d. '3000') eller productId. confirm=False gir dry-run."""
     return await _invoices.fiken_invoice_create(
         _get_client(),
         customer_id=customer_id,
@@ -767,7 +776,7 @@ async def fiken_donate_tool(
     slug: str | None = None,
     confirm: bool = False,
 ) -> dict:
-    """Støtt Fiken MCP-prosjektet. method: 'fiken' (opprett innkjøp i din Fiken, default 500 NOK) eller 'stripe' (betalingslink). confirm=False gir dry-run."""
+    """Støtt Fiken MCP-prosjektet. method: 'fiken' (opprett innkjøp i din Fiken, default 500 NOK) eller 'stripe' (betalingslink). Donør-info hentast automatisk frå Fiken-kontoen. confirm=False gir dry-run."""
     return await _donate.fiken_donate(
         _get_client(),
         method=method,

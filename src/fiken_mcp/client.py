@@ -209,6 +209,38 @@ class FikenClient:
             return {}, response.headers
         return response.json(), response.headers
 
+    async def download_file(self, url: str) -> tuple[bytes, str, dict[str, Any] | None]:
+        """Last ned fil frå ein Fiken API-URL. Returnerer (bytes, content_type, error).
+
+        `url` kan vere full URL (https://api.fiken.no/...) eller relativ sti (/api/v2/files/...).
+        """
+        # Normaliser til relativ sti for httpx
+        path = url
+        for prefix in ("https://api.fiken.no/api/v2", "https://api.fiken.no"):
+            if url.startswith(prefix):
+                path = url[len(prefix):]
+                break
+
+        async with self._semaphore:
+            try:
+                response = await self._http.request("GET", path)
+            except httpx.HTTPError as exc:
+                logger.warning("GET %s feil: %s", path, exc)
+                return b"", "", _error(0, f"HTTP-feil: {exc}", None)
+
+            logger.debug("GET %s → %d", path, response.status_code)
+
+            if response.status_code >= 400:
+                logger.warning("GET %s → %d", path, response.status_code)
+                return b"", "", _error(
+                    response.status_code,
+                    _message_for_status(response.status_code),
+                    _safe_json(response),
+                )
+
+            content_type = response.headers.get("content-type", "application/octet-stream")
+            return response.content, content_type, None
+
     async def get_company_slug(self) -> str | dict[str, Any]:
         if self._slug:
             return self._slug

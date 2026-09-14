@@ -8,6 +8,35 @@ async def _slug(client: FikenClient, slug: str | None) -> str | dict[str, Any]:
     return slug or await client.get_company_slug()
 
 
+# ── Fil-nedlasting ────────────────────────────────────────────────────────
+
+
+async def fiken_file_download(
+    client: FikenClient, url: str
+) -> dict[str, Any]:
+    """Last ned fil frå Fiken API-URL. Returnerer base64-innhald + metadata."""
+    if not url:
+        return {
+            "error": True,
+            "status_code": 400,
+            "message": "URL er påkravd",
+            "fiken_error": None,
+        }
+
+    file_bytes, content_type, error = await client.download_file(url)
+    if error is not None:
+        return error
+
+    filename = url.rsplit("/", 1)[-1] if "/" in url else "file"
+
+    return {
+        "filename": filename,
+        "content_type": content_type,
+        "size_bytes": len(file_bytes),
+        "content_base64": base64.b64encode(file_bytes).decode(),
+    }
+
+
 # ── Faktura-vedlegg ────────────────────────────────────────────────────────
 
 

@@ -75,8 +75,8 @@ async def fiken_invoice_create(
 ) -> dict[str, Any]:
     """Opprett ny faktura. Krev confirm=True for å utføre.
 
-    `lines` er ei liste av {description, netPrice, vat, vatType, productId?, account?, unitPrice?, quantity?, discount?}.
-    Beløp i øre.
+    `lines` er ei liste av {description, unitPrice, quantity, vatType, incomeAccount?, productId?, discount?}.
+    Beløp i øre. `unitPrice` og `quantity` er påkravd. Treng `incomeAccount` (t.d. "3000") eller `productId`.
     """
     resolved = await _slug(client, slug)
     if isinstance(resolved, dict):
