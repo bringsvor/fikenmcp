@@ -158,6 +158,38 @@ async def fiken_credit_note_create_partial(
     )
 
 
+async def fiken_credit_note_set_counter(
+    client: FikenClient,
+    *,
+    value: int = 20001,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict[str, Any]:
+    """Initialiser kreditnota-serien med eit startnummer. Kan berre gjerast éin
+    gong, før den første kreditnotaen blir oppretta. Krev confirm=True."""
+    resolved = await _slug(client, slug)
+    if isinstance(resolved, dict):
+        return resolved
+
+    payload: dict[str, Any] = {"value": value}
+
+    if not confirm:
+        return {
+            "dry_run": True,
+            "operation": "POST /creditNotes/counter",
+            "summary": f"Vil initialisere kreditnota-telaren til å starte på {value}",
+            "payload": payload,
+            "note": (
+                "Kall på nytt med confirm=True for å utføre. Verkar berre før "
+                "den første kreditnotaen er oppretta."
+            ),
+        }
+
+    return await client.request(
+        "POST", f"/companies/{resolved}/creditNotes/counter", json=payload
+    )
+
+
 async def fiken_credit_note_send(
     client: FikenClient,
     credit_note_id: int,

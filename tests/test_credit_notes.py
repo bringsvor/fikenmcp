@@ -5,6 +5,7 @@ from fiken_mcp.tools.credit_notes import (
     fiken_credit_note_get,
     fiken_credit_note_create_full,
     fiken_credit_note_create_partial,
+    fiken_credit_note_set_counter,
     fiken_credit_note_send,
 )
 
@@ -123,6 +124,24 @@ async def test_credit_note_create_partial_no_invoice_no_contact(client, mock_api
     )
     assert result["dry_run"] is True
     assert "ukjent" in result["summary"]
+
+
+# --- Set counter ---
+
+
+async def test_credit_note_set_counter_dry_run(client, mock_api):
+    result = await fiken_credit_note_set_counter(client, slug=SLUG)
+    assert result["dry_run"] is True
+    assert "20001" in result["summary"]
+    assert result["payload"]["value"] == 20001
+
+
+async def test_credit_note_set_counter_confirm(client, mock_api):
+    mock_api.post(f"/companies/{SLUG}/creditNotes/counter").respond(204)
+    result = await fiken_credit_note_set_counter(
+        client, value=30001, slug=SLUG, confirm=True
+    )
+    assert result == {}
 
 
 # --- Send ---

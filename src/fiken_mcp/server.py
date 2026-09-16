@@ -164,6 +164,21 @@ async def fiken_credit_note_create_partial_tool(
 
 
 @mcp.tool()
+async def fiken_credit_note_set_counter_tool(
+    value: int = 20001,
+    slug: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Initialiser kreditnota-serien med eit startnummer (berre før første kreditnota). confirm=False gir dry-run."""
+    return await _credit_notes.fiken_credit_note_set_counter(
+        _get_client(),
+        value=value,
+        slug=slug,
+        confirm=confirm,
+    )
+
+
+@mcp.tool()
 async def fiken_credit_note_send_tool(
     credit_note_id: int,
     method: str = "email",
