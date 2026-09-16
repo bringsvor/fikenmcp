@@ -8,9 +8,9 @@ Fiken har eit godt API, men det krev at du veit kva endepunkt du skal kalle, kor
 
 ## Status
 
-**40 verktøy** | **105 testar** | Alle grøne
+**42 verktøy** | **131 testar** | Alle grøne
 
-### Lese-verktøy (25)
+### Lese-verktøy (27)
 - **Selskap:** `fiken_company_get`, `fiken_companies_list`
 - **Faktura:** `fiken_invoices_list`, `fiken_invoice_get`
 - **Kreditnota:** `fiken_credit_notes_list`, `fiken_credit_note_get`
@@ -21,17 +21,18 @@ Fiken har eit godt API, men det krev at du veit kva endepunkt du skal kalle, kor
 - **Bank:** `fiken_bank_accounts_list`, `fiken_bank_account_get`, `fiken_bank_transactions`
 - **Bilag/transaksjonar:** `fiken_journal_entries_list`, `fiken_journal_entry_get`, `fiken_transactions_list`
 - **Innboks:** `fiken_inbox_list`
-- **Vedlegg:** `fiken_invoice_attachments_list`, `fiken_journal_entry_attachments_list`
+- **Vedlegg:** `fiken_invoice_attachments_list`, `fiken_journal_entry_attachments_list`, `fiken_file_download`
 - **Rapportar:** `fiken_balance_sheet`, `fiken_income_statement`
 
-### Skrive-verktøy (14) — alle med `confirm=True`-sikring
+### Skrive-verktøy (15) — alle med `confirm=True`-sikring
 - **Kontaktar:** `fiken_contact_create`, `fiken_contact_update`
 - **Faktura:** `fiken_invoice_create`, `fiken_invoice_send`
-- **Kreditnota:** `fiken_credit_note_create_full`, `fiken_credit_note_create_partial`, `fiken_credit_note_send`
+- **Kreditnota:** `fiken_credit_note_create_full`, `fiken_credit_note_create_partial`, `fiken_credit_note_set_counter`, `fiken_credit_note_send`
 - **Innkjøp:** `fiken_purchase_create`
 - **Produkt:** `fiken_product_create`, `fiken_product_update`
 - **Bilag:** `fiken_journal_entry_create`
 - **Vedlegg:** `fiken_invoice_attachment_add`, `fiken_journal_entry_attachment_add`
+- **Støtt prosjektet:** `fiken_donate`
 
 Alle skriveverkty returnerer eit dry-run-samandrag som standard. Berre ved `confirm=True` går kallet til Fiken.
 
